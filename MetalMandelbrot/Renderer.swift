@@ -8,7 +8,6 @@
 import Foundation
 import MetalKit
 import simd
-import Complex
 
 struct Vertex {
     let position: SIMD3<Float>
@@ -16,14 +15,15 @@ struct Vertex {
 }
 
 class Renderer: NSObject {
-    
-    
-    
     let metalView: MTKView
     let device = MTLCreateSystemDefaultDevice()
     private var pipelineState: MTLRenderPipelineState?
-//    private var viewPortSize: vector_float2 = vector_float2.init(arrayLiteral: 1001, 1001)
+    private var computePipelineState: MTLComputePipelineState?
+
     private var commandQueue: MTLCommandQueue?
+    
+    var resultBuffer: MTLBuffer?
+    var colors: [SIMD3<Float>] = []
     
     init(view: MTKView) {
         self.metalView = view
@@ -31,14 +31,11 @@ class Renderer: NSObject {
         
         self.metalView.device = self.device
 
-//        self.viewPortSize.x =  Float(self.mtkView.drawableSize.width)
-//        self.viewPortSize.y =  Float(self.mtkView.drawableSize.height)
-        
-        
-        
-        let library = self.device?.makeDefaultLibrary()
-        let vertexFunction = library?.makeFunction(name: "vertexShader")
-        let fragmentFunction = library?.makeFunction(name: "fragmentShader")
+        guard let library = self.device?.makeDefaultLibrary(),
+              let vertexFunction = library.makeFunction(name: "vertexShader"),
+              let fragmentFunction = library.makeFunction(name: "fragmentShader"),
+              let computeFunction = library.makeFunction(name: "pointColor")
+        else { return }
         
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.label = "Simple Pipeline"
@@ -61,17 +58,83 @@ class Renderer: NSObject {
         pipelineDescriptor.depthAttachmentPixelFormat = self.metalView.depthStencilPixelFormat
         
         do {
-        self.pipelineState = try self.device?.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            self.pipelineState = try self.device?.makeRenderPipelineState(descriptor: pipelineDescriptor)
             self.commandQueue = self.device?.makeCommandQueue()
         } catch (let error) {
             print(error)
         }
-       
-
+               
+//        self.metalView.delegate = self
         
-        self.metalView.delegate = self
+        self.computePipelineState = try? self.device?.makeComputePipelineState(function: computeFunction)
+        self.calculatePoints()
     }
     
+    func calculatePoints() {
+        
+        guard let computePipelineState = self.computePipelineState else { return }
+        
+        
+        let size = self.metalView.drawableSize
+        let width: Float =  Float(size.width)
+        let height: Float =  Float(size.height)
+        
+                
+        let xStep: Float = 20 / width
+        let yStep: Float = 20 / height
+        var i: Int = 0
+        var arr: [SIMD2<Float>] = []
+
+        for x in stride(from: Float(-1.5), to: Float(0.5), by: xStep) {
+            for y in stride(from: Float(-1), to: Float(1.1), by: yStep) {
+                arr.append(SIMD2<Float>(x, y))
+                i += 1
+            }
+        }
+    
+        
+        let arrSize = MemoryLayout.size(ofValue: arr[0]) * arr.count * 2
+
+        let buffer = self.device?.makeBuffer(bytes: arr, length: arrSize, options: .storageModeShared)
+        
+        resultBuffer = self.device?.makeBuffer(length: arrSize, options: .storageModeShared)
+        
+        let commandBuffer = commandQueue?.makeCommandBuffer()
+        commandBuffer?.label = "Compute Command"
+        
+        let computeEncoder = commandBuffer?.makeComputeCommandEncoder()
+        computeEncoder?.setComputePipelineState(self.computePipelineState!)
+        computeEncoder?.setBuffer(buffer, offset: 0, index: 0)
+        computeEncoder?.setBuffer(resultBuffer, offset: 0, index: 1)
+        
+        
+        var _threadGroupsSize = computePipelineState.maxTotalThreadsPerThreadgroup
+        if _threadGroupsSize > arr.count {
+            _threadGroupsSize = arr.count
+        }
+        
+        let threadGroupsSize = MTLSizeMake(_threadGroupsSize, 1, 1)
+        let gridSize = MTLSize(width: arr.count / _threadGroupsSize, height: 1, depth: 1)
+
+        
+//        computeEncoder?.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupsSize)
+        computeEncoder?.dispatchThreadgroups(gridSize, threadsPerThreadgroup: threadGroupsSize)
+        computeEncoder?.endEncoding()
+        commandBuffer?.commit()
+        commandBuffer?.addCompletedHandler({ cmndBuffer in
+            guard let buffer = self.resultBuffer else {return}
+            self.colors.reserveCapacity(arr.count)
+            
+            for i in 0..<arr.count {
+                self.colors.append(buffer.contents()
+                                    .load(fromByteOffset: MemoryLayout<SIMD3<Float>>.size * i,
+                                          as: SIMD3<Float>.self))
+            }
+            self.draw(in: self.metalView)
+        })
+    }
+    
+/*    CPU calculation mandelbrot point color    */
     func mandelbrotPointColor(x: Float, y: Float) -> SIMD4<Float> {
         var preX: Float = 0
         var preY: Float = 0
@@ -103,12 +166,13 @@ class Renderer: NSObject {
 extension Renderer: MTKViewDelegate {
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-//        self.viewPortSize.x = Float(size.width)
-//        self.viewPortSize.y = Float(size.height)
         view.draw()
     }
     
     func draw(in view: MTKView) {
+        if self.colors.isEmpty {
+            return
+        }
         
         let size = view.drawableSize
         let width: Float =  Float(size.width)
@@ -118,36 +182,24 @@ extension Renderer: MTKViewDelegate {
         
         var vertices:[Vertex] = []
         
-        let xStep = 10 / width
-        let yStep = 10 / height
+        let xStep: Float = 20 / width
+        let yStep: Float = 20 / height
+        var i: Int = 0
         
         for x in stride(from: Float(-1.5), to: Float(0.5), by: xStep) {
             for y in stride(from: Float(-1), to: Float(1.1), by: yStep) {
-                let position: SIMD3<Float> = [x * aspectRation, y, 0]
-                let color = self.mandelbrotPointColor(x: x, y: y)
-                let vertex = Vertex(position: position, color: color)
+                let position: SIMD3<Float> = [x / aspectRation, y, 0]
+//                let color = self.mandelbrotPointColor(x: x, y: y)   /* CPU calculated color */
+//                let vertex = Vertex(position: position, color: color)
+                let color = self.colors[i] /* GPU Calculated color */
+                let vertex = Vertex(position: position, color: SIMD4<Float>(color, 1))
                 vertices.append(vertex)
+                i += 1
             }
         }
         
-        
-        let triangleVertices: [Vertex] = vertices
-        /*[
-            // v0
-            [ 0.0,  0.2, 0.0 ], // position
-//            [ 1.0,  0.0, 0.0 ], // color
-            // v1
-            [-0.2, -0.2, 0.0 ],
-//            [ 0.0,  0.2, 0.0 ],
-            // v2
-            [ 0.2, -0.2, 0.0 ]
-//            [ 0.0,  0.0, 1.0 ]
-        ]*/
-        
         let indices: [UInt32] = (0..<UInt32(vertices.count)).compactMap{$0}
-        
-        
-        
+
         let commandBuffer = commandQueue?.makeCommandBuffer()
         commandBuffer?.label = "My Command"
         
@@ -157,8 +209,6 @@ extension Renderer: MTKViewDelegate {
         
         let renderEncoder = commandBuffer?.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
         
-//        renderEncoder?.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(self.viewPortSize.x), height: Double(self.viewPortSize.y), znear: 0, zfar: 1))
-        
         if let pipelineState = self.pipelineState {
             renderEncoder?.setRenderPipelineState(pipelineState)
         }
@@ -167,16 +217,10 @@ extension Renderer: MTKViewDelegate {
             fatalError("Indices Buffer didn't create")
         }
         
-        let verticesBuffer = self.device?.makeBuffer(bytes: triangleVertices, length: triangleVertices.count * MemoryLayout.size(ofValue: triangleVertices[0]), options: [])
-        
-        
-        
-        renderEncoder?.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
-        
-//        renderEncoder?.setVertexBytes(triangleVertices, length: triangleVertices.count * MemoryLayout.size(ofValue: triangleVertices[0]), index: 0)
-               
+        let verticesBuffer = self.device?.makeBuffer(bytes: vertices, length: vertices.count * MemoryLayout.size(ofValue: vertices[0]), options: [])
 
-        
+        renderEncoder?.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
+
         renderEncoder?.drawIndexedPrimitives(type: .point, indexCount: indices.count, indexType: .uint32, indexBuffer: indicesBuffer, indexBufferOffset: 0, instanceCount: 2)
         
         renderEncoder?.endEncoding()
