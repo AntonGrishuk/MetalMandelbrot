@@ -1,20 +1,15 @@
 //
-//  Renderer.swift
+//  GPUCalculatedRender.swift
 //  MetalMandelbrot
 //
-//  Created by Anton Hryshchuk on 09.08.2021.
+//  Created by Anton Grishuk on 12.12.2021.
 //
 
 import Foundation
 import MetalKit
 import simd
 
-struct Vertex {
-    let position: SIMD3<Float>
-    let color: SIMD4<Float>
-}
-
-class Renderer: NSObject {
+class GpuCalculatedRenderer: NSObject {
     let metalView: MTKView
     let device = MTLCreateSystemDefaultDevice()
     private var pipelineState: MTLRenderPipelineState?
@@ -163,7 +158,7 @@ class Renderer: NSObject {
     }
 }
 
-extension Renderer: MTKViewDelegate {
+extension GpuCalculatedRenderer: MTKViewDelegate {
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         view.draw()
