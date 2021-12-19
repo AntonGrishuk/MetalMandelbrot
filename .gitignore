@@ -1,0 +1,4 @@
+MetalMandelbrot.xcodeproj/xcuserdata
+*.xcuserstate
+.DS_Store
+*.xcworkspace
