@@ -14,6 +14,8 @@
 		3A1B68C226C1C56C008AC4D9 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3A1B68C026C1C56C008AC4D9 /* LaunchScreen.storyboard */; };
 		3A1B68CA26C1C66D008AC4D9 /* CpuCalculatedRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1B68C926C1C66D008AC4D9 /* CpuCalculatedRenderer.swift */; };
 		3A1B68CC26C1CAAD008AC4D9 /* Shader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 3A1B68CB26C1CAAD008AC4D9 /* Shader.metal */; };
+		723C99EE2778A83500704D15 /* FragmetnShaderCalculatedViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723C99ED2778A83500704D15 /* FragmetnShaderCalculatedViewController.swift */; };
+		723C99F02778A87400704D15 /* FragmentShaderCalculatedRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723C99EF2778A87400704D15 /* FragmentShaderCalculatedRenderer.swift */; };
 		728B75B427667DDE009B682C /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728B75B327667DDE009B682C /* MainViewController.swift */; };
 		728B75B927668C72009B682C /* GpuCalculatedViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728B75B827668C72009B682C /* GpuCalculatedViewController.swift */; };
 		728B75BB27668CF2009B682C /* GpuCalculatedRender.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728B75BA27668CF2009B682C /* GpuCalculatedRender.swift */; };
@@ -43,6 +45,8 @@
 		3A1B68C326C1C56C008AC4D9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3A1B68C926C1C66D008AC4D9 /* CpuCalculatedRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CpuCalculatedRenderer.swift; sourceTree = "<group>"; };
 		3A1B68CB26C1CAAD008AC4D9 /* Shader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shader.metal; sourceTree = "<group>"; };
+		723C99ED2778A83500704D15 /* FragmetnShaderCalculatedViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FragmetnShaderCalculatedViewController.swift; sourceTree = "<group>"; };
+		723C99EF2778A87400704D15 /* FragmentShaderCalculatedRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FragmentShaderCalculatedRenderer.swift; sourceTree = "<group>"; };
 		728B75B327667DDE009B682C /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		728B75B827668C72009B682C /* GpuCalculatedViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpuCalculatedViewController.swift; sourceTree = "<group>"; };
 		728B75BA27668CF2009B682C /* GpuCalculatedRender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpuCalculatedRender.swift; sourceTree = "<group>"; };
@@ -84,11 +88,21 @@
 				728B75B227667D79009B682C /* MainScreen */,
 				728B75B6276682CA009B682C /* CPU calculated */,
 				728B75B727668C27009B682C /* GPU calculated */,
+				723C99EC2778A7F500704D15 /* FragmetnShaderCalculated */,
 				3A1B68BE26C1C56C008AC4D9 /* Assets.xcassets */,
 				3A1B68C026C1C56C008AC4D9 /* LaunchScreen.storyboard */,
 				3A1B68C326C1C56C008AC4D9 /* Info.plist */,
 			);
 			path = MetalMandelbrot;
+			sourceTree = "<group>";
+		};
+		723C99EC2778A7F500704D15 /* FragmetnShaderCalculated */ = {
+			isa = PBXGroup;
+			children = (
+				723C99ED2778A83500704D15 /* FragmetnShaderCalculatedViewController.swift */,
+				723C99EF2778A87400704D15 /* FragmentShaderCalculatedRenderer.swift */,
+			);
+			path = FragmetnShaderCalculated;
 			sourceTree = "<group>";
 		};
 		728B75B227667D79009B682C /* MainScreen */ = {
@@ -218,6 +232,8 @@
 				3A1B68CC26C1CAAD008AC4D9 /* Shader.metal in Sources */,
 				728B75B927668C72009B682C /* GpuCalculatedViewController.swift in Sources */,
 				3A1B68B826C1C56B008AC4D9 /* SceneDelegate.swift in Sources */,
+				723C99F02778A87400704D15 /* FragmentShaderCalculatedRenderer.swift in Sources */,
+				723C99EE2778A83500704D15 /* FragmetnShaderCalculatedViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -27,7 +27,7 @@ VertexOut vertexShader(VertexIn vert [[ stage_in ]])
     VertexOut out;
     out.position = float4(vert.position, 1.0f);
     out.color = vert.color;
-    out.size = 10;
+    out.size = 1;
     return out;
 }
 
@@ -70,4 +70,55 @@ void pointColor(device const float2 *position [[ buffer(0) ]],
     }
         
     result[index] = color;
+}
+
+/*-----------------------------------*/
+
+vertex
+float4 fragCalculatedVertexShader(const device float3 *vert,
+                                  uint vid [[ vertex_id ]])
+{
+    float3 point = vert[vid];
+//    if (point[0] > 0.2 && point[0] < 0.3 ) {
+//        return float4(0, 0, 0, 1);
+//    }
+    
+    return float4(point, 1.0);
+}
+
+fragment
+float4 fragmentCalculatedShader(float4 point [[ position ]],
+                                const device float *size)
+{
+    float preX = 0;
+    float preY = 0;
+    float xn = 0;
+    float yn = 0;
+    float x = (point[0] + 1) / size[1] -1.2;
+    float y = (point[1] + 1) / size[1] - 0.5;
+    
+    x*= 2;
+    y*=2;
+
+    float max = 200;
+    
+    float4 color = float4(0, 0, 0, 1);
+    
+    for (float i = 0; i <= max; i++) {
+        xn = preX * preX - preY * preY + x;
+        yn = 2 * preY * preX + y;
+        preY = yn;
+        preX = xn;
+        
+        
+
+        if (xn*xn + yn*yn < 4) {
+            color = float4(1, 1, 1, 1);
+        } else {
+            color = float4(1 / (xn*xn + yn*yn), 1 / (xn*xn + yn*yn), 1 / (xn*xn + yn*yn), 1);
+            return color;
+        }
+    }
+        
+    return color;
 }

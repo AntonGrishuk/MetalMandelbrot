@@ -10,10 +10,12 @@ import UIKit
 enum FractalTypeType: CaseIterable {
     case cpuCalculated
     case kernelCalculated
+    case fragmentShaderCalculated
 }
 
 class MainViewController: UIViewController {
     
+        
     private lazy var tableView: UITableView = {
         let table = UITableView()
         table.dataSource = self
@@ -55,21 +57,25 @@ extension MainViewController: UITableViewDataSource, UITableViewDelegate {
         switch indexPath.row {
         case 0: cell.textLabel?.text = "CPU calculated"
         case 1: cell.textLabel?.text = "Calculated with kernel function"
+        case 2: cell.textLabel?.text = "Fragment Shader calculated"
         default:
             return
         }
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        var viewController: UIViewController?
         switch indexPath.row {
         case 0:
-            let vc = CpuCalculatedViewController()
-            self.navigationController?.pushViewController(vc, animated: true)
+            viewController = CpuCalculatedViewController()
         case 1:
-            let vc = GpuCalculatedViewController()
-            self.navigationController?.pushViewController(vc, animated: true)
+            viewController = GpuCalculatedViewController()
+        case 2:
+            viewController = FragmenShaderCalculatedViewController()
         default:
             return
         }
+        
+        viewController.map{self.navigationController?.pushViewController($0, animated: true)}
     }
 }
