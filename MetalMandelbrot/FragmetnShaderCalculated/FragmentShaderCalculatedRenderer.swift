@@ -19,11 +19,14 @@ class FragmenShaderCalculatedRenderer: NSObject {
     private var commandQueue: MTLCommandQueue?
     
     var resultBuffer: MTLBuffer?
-    let points: [SIMD3<Float>] = [[-1, -1, 1], [-1, 1, 1], [1, -1, 1], [1, 1, 1]]
+    var points: [SIMD3<Float>] = [[-1, -1, 1], [-1, 1, 1], [1, -1, 1], [1, 1, 1]]
     let indices: [UInt32] = [0, 1, 2, 2, 1, 3]
+    var uniformsBuffer: MTLBuffer
     
     init(view: MTKView) {
         self.metalView = view
+        var uniforms = FragmentUniforms(zoom: 1.0)
+        uniformsBuffer = device!.makeBuffer(bytes: &uniforms, length: MemoryLayout<FragmentUniforms>.size, options: [])!
         super.init()
         
         self.metalView.device = self.device
@@ -89,14 +92,18 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
     }
     
     func draw(in view: MTKView) {
-        let size = view.drawableSize
-        let viewSize: [Float] = [Float(size.width), Float(size.height)]
-        guard let sizeBuff = self.device?.makeBuffer(bytes: viewSize,
-                length: MemoryLayout.size(ofValue: viewSize[0]) * viewSize.count,
-                options: .cpuCacheModeWriteCombined) else {
-            return
+        
+        let ptr = uniformsBuffer.contents().bindMemory(to: FragmentUniforms.self, capacity: 1)
+        var zoom = ptr.pointee.zoom
+        
+        if zoom < 0.001 {
+            zoom = 1
+        } else {
+            zoom -= (0.005 * zoom)
         }
-
+        
+        ptr.pointee.zoom = zoom
+        
         let commandBuffer = commandQueue?.makeCommandBuffer()
         commandBuffer?.label = "My Command"
         
@@ -110,12 +117,6 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
             renderEncoder?.setRenderPipelineState(pipelineState)
         }
         
-//        guard let indicesBuffer = self.device?.makeBuffer(bytes: indices, length: indices.count * MemoryLayout.size(ofValue: indices[0]), options: .cpuCacheModeWriteCombined) else {
-//            fatalError("Indices Buffer didn't create")
-//        }
-//
-//        let verticesBuffer = self.device?.makeBuffer(bytes: vertices, length: vertices.count * MemoryLayout.size(ofValue: vertices[0]), options: [])
-        
         let verticesBuffer = device?.makeBuffer(bytes: points,
             length: points.count * MemoryLayout.size(ofValue: points[0]), options: [])
         
@@ -127,7 +128,17 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
         }
         
         renderEncoder?.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
+        
+        let size = view.drawableSize
+        let viewSize: [Float] = [Float(size.width), Float(size.height)]
+        guard let sizeBuff = self.device?.makeBuffer(bytes: viewSize,
+                length: MemoryLayout.size(ofValue: viewSize[0]) * viewSize.count,
+                options: .cpuCacheModeWriteCombined) else {
+            return
+        }
+        
         renderEncoder?.setFragmentBuffer(sizeBuff, offset: 0, index: 0)
+        renderEncoder?.setFragmentBuffer(uniformsBuffer, offset: 0, index: 1)
 
         renderEncoder?.drawIndexedPrimitives(type: .triangle,
                                              indexCount: indices.count,
@@ -138,8 +149,8 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
         renderEncoder?.endEncoding()
         
         if let drawable = view.currentDrawable {
-            let duration = 1.0 / Double(view.preferredFramesPerSecond)
-            commandBuffer?.present(drawable, atTime: duration)
+//            let duration = 1.0 / Double(view.preferredFramesPerSecond)
+            commandBuffer?.present(drawable)
         }
         
         commandBuffer?.commit()

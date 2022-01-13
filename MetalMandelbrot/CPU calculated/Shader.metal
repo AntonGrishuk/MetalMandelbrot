@@ -21,6 +21,11 @@ struct VertexOut
     float size [[point_size]];
 };
 
+struct FragmentUniforms
+{
+    float zoom;
+};
+
 vertex
 VertexOut vertexShader(VertexIn vert [[ stage_in ]])
 {
@@ -88,18 +93,21 @@ float4 fragCalculatedVertexShader(const device float3 *vert,
 
 fragment
 float4 fragmentCalculatedShader(float4 point [[ position ]],
-                                const device float *size)
+                                const device float *size,
+                                constant FragmentUniforms &uniforms [[buffer(1)]])
 {
     float preX = 0;
     float preY = 0;
     float xn = 0;
     float yn = 0;
-    float x = (point[0] + 1) / size[1] -1.2;
-    float y = (point[1] + 1) / size[1] - 0.5;
+    float x = (point[0] + 1) / size[1];
+    float y = (point[1] + 1) / size[1];
     
-    x*= 2;
-    y*=2;
+    x*= 2 * uniforms.zoom;
+    y*= 2 * uniforms.zoom;
 
+    x -= 1.7;
+    y -= uniforms.zoom;
     float max = 200;
     
     float4 color = float4(0, 0, 0, 1);

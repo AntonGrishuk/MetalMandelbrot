@@ -18,6 +18,8 @@ class FragmenShaderCalculatedViewController: UIViewController {
         return mv
     }()
     
+    let timer = DispatchSource.makeTimerSource()
+    
     private var renderer: FragmenShaderCalculatedRenderer?
     
     override func viewDidLoad() {
@@ -28,11 +30,19 @@ class FragmenShaderCalculatedViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        self.metalView.enableSetNeedsDisplay = false
-        self.metalView.isPaused = false
+        self.metalView.enableSetNeedsDisplay = true
+        self.metalView.isPaused = true
         
         self.renderer = FragmenShaderCalculatedRenderer(view: self.metalView)
-        self.metalView.setNeedsDisplay()
+        timer.setEventHandler {
+            DispatchQueue.main.async {
+                self.metalView.setNeedsDisplay()
+            }
+        }
+        
+        timer.schedule(deadline: .now(), repeating: 0.05)
+        timer.resume()
+        
     }
 
     private func configureUI() {
@@ -46,6 +56,11 @@ class FragmenShaderCalculatedViewController: UIViewController {
             metalView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             metalView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesEnded(touches, with: event)
+        metalView.setNeedsDisplay()
     }
 
 }

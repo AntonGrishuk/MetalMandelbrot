@@ -11,3 +11,7 @@ struct Vertex {
     let position: SIMD3<Float>
     let color: SIMD4<Float>
 }
+
+struct FragmentUniforms {
+    var zoom: Float
+}
