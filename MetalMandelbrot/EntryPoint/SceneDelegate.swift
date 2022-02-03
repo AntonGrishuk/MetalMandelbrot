@@ -16,7 +16,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         let window = UIWindow(windowScene: windowScene)
 
-        let mainViewController = MainViewController()
+//        let mainViewController = MainViewController()
+        let mainViewController = FragmentShaderCalculatedViewController()
         let navController = UINavigationController(rootViewController: mainViewController)
         window.rootViewController = navController
         self.window = window

@@ -17,15 +17,20 @@ class FragmenShaderCalculatedRenderer: NSObject {
     private var pipelineState: MTLRenderPipelineState?
 
     private var commandQueue: MTLCommandQueue?
+    var zoom: Float = 1
+    var location: CGPoint = .zero
+    
+    var translation: CGPoint = .zero
     
     var resultBuffer: MTLBuffer?
     var points: [SIMD3<Float>] = [[-1, -1, 1], [-1, 1, 1], [1, -1, 1], [1, 1, 1]]
     let indices: [UInt32] = [0, 1, 2, 2, 1, 3]
     var uniformsBuffer: MTLBuffer
+    var isComplete: Bool = true
     
     init(view: MTKView) {
         self.metalView = view
-        var uniforms = FragmentUniforms(zoom: 1.0)
+        var uniforms = FragmentUniforms(zoom: zoom, position: [1, 1], translation: [0, 0])
         uniformsBuffer = device!.makeBuffer(bytes: &uniforms, length: MemoryLayout<FragmentUniforms>.size, options: [])!
         super.init()
         
@@ -54,34 +59,7 @@ class FragmenShaderCalculatedRenderer: NSObject {
         self.metalView.delegate = self
         
     }
-    
-/*    CPU calculation mandelbrot point color    */
-    func mandelbrotPointColor(x: Float, y: Float) -> SIMD4<Float> {
-        var preX: Float = 0
-        var preY: Float = 0
-        var xn: Float = 0
-        var yn: Float = 0
 
-        let max = 100
-        
-        var color = SIMD4<Float>(arrayLiteral: 0, 0, 0, 1)
-        
-        for i in 0...max {
-            xn = preX * preX - preY * preY + x
-            yn = 2 * preY * preX + y
-            preY = yn
-            preX = xn
-            
-            if xn*xn + yn*yn > 4 {
-                return color
-            } else {
-                let colorComponent = Float(i) / Float(max)
-                color = SIMD4<Float>.init(arrayLiteral: sin(Float.pi * colorComponent), colorComponent, colorComponent, 1)
-            }
-        }
-        
-        return color
-    }
 }
 
 
@@ -93,16 +71,17 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
     
     func draw(in view: MTKView) {
         
-        let ptr = uniformsBuffer.contents().bindMemory(to: FragmentUniforms.self, capacity: 1)
-        var zoom = ptr.pointee.zoom
+        guard isComplete else { return }
+        isComplete = false
         
-        if zoom < 0.001 {
-            zoom = 1
-        } else {
-            zoom -= (0.005 * zoom)
-        }
+        let ptr = uniformsBuffer.contents().bindMemory(to: FragmentUniforms.self, capacity: 1)
         
         ptr.pointee.zoom = zoom
+        let screenScale = UIScreen.main.scale
+        ptr.pointee.position = [Float(location.x * screenScale),
+                                Float(location.y * screenScale)]
+        ptr.pointee.translation = [Float(translation.x * screenScale),
+                                   Float(translation.y * screenScale)]
         
         let commandBuffer = commandQueue?.makeCommandBuffer()
         commandBuffer?.label = "My Command"
@@ -113,9 +92,9 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
         
         let renderEncoder = commandBuffer?.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
         
-        if let pipelineState = self.pipelineState {
-            renderEncoder?.setRenderPipelineState(pipelineState)
-        }
+        guard let pipelineState = self.pipelineState else { return }
+        renderEncoder?.setRenderPipelineState(pipelineState)
+        renderEncoder?.setViewport(MTLViewport.init(originX: 0, originY: 0, width: view.drawableSize.width, height: view.drawableSize.height, znear: 0.0, zfar: 1.0))
         
         let verticesBuffer = device?.makeBuffer(bytes: points,
             length: points.count * MemoryLayout.size(ofValue: points[0]), options: [])
@@ -149,10 +128,13 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
         renderEncoder?.endEncoding()
         
         if let drawable = view.currentDrawable {
-//            let duration = 1.0 / Double(view.preferredFramesPerSecond)
             commandBuffer?.present(drawable)
         }
         
+        commandBuffer?.addCompletedHandler({ _ in
+            self.isComplete = true
+        })
+                
         commandBuffer?.commit()
     }
 }

@@ -14,4 +14,6 @@ struct Vertex {
 
 struct FragmentUniforms {
     var zoom: Float
+    var position: SIMD2<Float>
+    var translation: SIMD2<Float>
 }

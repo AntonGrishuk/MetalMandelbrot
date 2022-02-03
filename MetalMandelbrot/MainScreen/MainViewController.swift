@@ -71,7 +71,7 @@ extension MainViewController: UITableViewDataSource, UITableViewDelegate {
         case 1:
             viewController = GpuCalculatedViewController()
         case 2:
-            viewController = FragmenShaderCalculatedViewController()
+            viewController = FragmentShaderCalculatedViewController()
         default:
             return
         }
