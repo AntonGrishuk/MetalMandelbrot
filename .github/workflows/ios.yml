@@ -1,4 +1,4 @@
-name: iOS starter workflow
+name: iOS Test
 
 on: 
   workflow_dispatch:
