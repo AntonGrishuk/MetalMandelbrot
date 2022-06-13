@@ -7,13 +7,10 @@
 
 import Foundation
 
-struct Vertex {
-    let position: SIMD3<Float>
-    let color: SIMD4<Float>
-}
-
 struct FragmentUniforms {
-    var zoom: Float
-    var position: SIMD2<Float>
+    var scale: Float
+    var oldScale: Float
+    var viewSize: SIMD2<Float>
     var translation: SIMD2<Float>
+    var anchor: SIMD2<Float>
 }

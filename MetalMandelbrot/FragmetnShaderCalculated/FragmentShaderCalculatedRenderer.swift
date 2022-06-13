@@ -12,25 +12,31 @@ import MetalKit
 import simd
 
 class FragmenShaderCalculatedRenderer: NSObject {
-    let metalView: MTKView
-    let device = MTLCreateSystemDefaultDevice()
-    private var pipelineState: MTLRenderPipelineState?
-
-    private var commandQueue: MTLCommandQueue?
-    var zoom: Float = 1
-    var location: CGPoint = .zero
     
+    var zoom: Float = 1
+    var oldZoom: Float = 1
+    var anchor: CGPoint = .zero
     var translation: CGPoint = .zero
     
-    var resultBuffer: MTLBuffer?
-    var points: [SIMD3<Float>] = [[-1, -1, 1], [-1, 1, 1], [1, -1, 1], [1, 1, 1]]
-    let indices: [UInt32] = [0, 1, 2, 2, 1, 3]
-    var uniformsBuffer: MTLBuffer
-    var isComplete: Bool = true
+    private let metalView: MTKView
+    private let device = MTLCreateSystemDefaultDevice()
+    private var pipelineState: MTLRenderPipelineState?
+    private var commandQueue: MTLCommandQueue?
+    private var resultBuffer: MTLBuffer?
+    private var points: [SIMD3<Float>] = [[-1, -1, 1], [-1, 1, 1], [1, -1, 1], [1, 1, 1]]
+    private let indices: [UInt32] = [0, 1, 2, 2, 1, 3]
+    private var uniformsBuffer: MTLBuffer
+    private var isComplete: Bool = true
     
     init(view: MTKView) {
         self.metalView = view
-        var uniforms = FragmentUniforms(zoom: zoom, position: [1, 1], translation: [0, 0])
+        let size = view.drawableSize
+        let viewSize: SIMD2<Float> = [Float(size.width), Float(size.height)]
+        var uniforms = FragmentUniforms(scale: zoom,
+                                        oldScale: zoom,
+                                        viewSize: viewSize,
+                                        translation: [0, 0],
+                                        anchor: [0, 0])
         uniformsBuffer = device!.makeBuffer(bytes: &uniforms, length: MemoryLayout<FragmentUniforms>.size, options: [])!
         super.init()
         
@@ -59,9 +65,12 @@ class FragmenShaderCalculatedRenderer: NSObject {
         self.metalView.delegate = self
         
     }
+    
+    func update() {
+        self.metalView.setNeedsDisplay()
+    }
 
 }
-
 
 extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
     
@@ -75,13 +84,14 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
         isComplete = false
         
         let ptr = uniformsBuffer.contents().bindMemory(to: FragmentUniforms.self, capacity: 1)
-        
-        ptr.pointee.zoom = zoom
+        ptr.pointee.scale = zoom
+        ptr.pointee.oldScale = oldZoom
         let screenScale = UIScreen.main.scale
-        ptr.pointee.position = [Float(location.x * screenScale),
-                                Float(location.y * screenScale)]
+
         ptr.pointee.translation = [Float(translation.x * screenScale),
                                    Float(translation.y * screenScale)]
+        ptr.pointee.anchor = [Float(anchor.x * screenScale),
+                              Float(anchor.y * screenScale)]
         
         let commandBuffer = commandQueue?.makeCommandBuffer()
         commandBuffer?.label = "My Command"
@@ -108,17 +118,8 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
         
         renderEncoder?.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
         
-        let size = view.drawableSize
-        let viewSize: [Float] = [Float(size.width), Float(size.height)]
-        guard let sizeBuff = self.device?.makeBuffer(bytes: viewSize,
-                length: MemoryLayout.size(ofValue: viewSize[0]) * viewSize.count,
-                options: .cpuCacheModeWriteCombined) else {
-            return
-        }
+        renderEncoder?.setFragmentBuffer(uniformsBuffer, offset: 0, index: 0)
         
-        renderEncoder?.setFragmentBuffer(sizeBuff, offset: 0, index: 0)
-        renderEncoder?.setFragmentBuffer(uniformsBuffer, offset: 0, index: 1)
-
         renderEncoder?.drawIndexedPrimitives(type: .triangle,
                                              indexCount: indices.count,
                                              indexType: .uint32,
