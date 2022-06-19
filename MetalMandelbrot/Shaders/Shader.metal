@@ -55,7 +55,7 @@ float4 mandelbrotPointColor(float x, float y) {
     float xn = 0;
     float yn = 0;
 
-    float max_iterations = 100;
+    float max_iterations = 250;
 
     float4 color = float4(0, 0, 0, 1);
 
