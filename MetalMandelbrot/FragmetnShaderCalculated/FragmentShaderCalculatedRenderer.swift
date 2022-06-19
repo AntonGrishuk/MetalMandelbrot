@@ -13,11 +13,14 @@ import simd
 
 class FragmenShaderCalculatedRenderer: NSObject {
     
-    var zoom: Float = 1
-    var oldZoom: Float = 1
-    var anchor: CGPoint = .zero
+    var zoom: Float = 1 {
+        didSet {
+            oldZoom = oldValue
+        }
+    }
     var translation: CGPoint = .zero
     
+    private var oldZoom: Float = 1
     private let metalView: MTKView
     private let device = MTLCreateSystemDefaultDevice()
     private var pipelineState: MTLRenderPipelineState?
@@ -33,10 +36,8 @@ class FragmenShaderCalculatedRenderer: NSObject {
         let size = view.drawableSize
         let viewSize: SIMD2<Float> = [Float(size.width), Float(size.height)]
         var uniforms = FragmentUniforms(scale: zoom,
-                                        oldScale: zoom,
                                         viewSize: viewSize,
-                                        translation: [0, 0],
-                                        anchor: [0, 0])
+                                        translation: [0, 0])
         uniformsBuffer = device!.makeBuffer(bytes: &uniforms, length: MemoryLayout<FragmentUniforms>.size, options: [])!
         super.init()
         
@@ -67,7 +68,13 @@ class FragmenShaderCalculatedRenderer: NSObject {
     }
     
     func update() {
-        self.metalView.setNeedsDisplay()
+        metalView.setNeedsDisplay()
+    }
+    
+    func pinch(_ point: CGPoint) {
+        let shift = (point + translation - CGPoint(x: metalView.bounds.width,
+                                                   y: metalView.bounds.height) * 0.5) * (1 - zoom / oldZoom)
+        translation = translation - shift
     }
 
 }
@@ -79,19 +86,15 @@ extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
     }
     
     func draw(in view: MTKView) {
-        
         guard isComplete else { return }
         isComplete = false
         
         let ptr = uniformsBuffer.contents().bindMemory(to: FragmentUniforms.self, capacity: 1)
         ptr.pointee.scale = zoom
-        ptr.pointee.oldScale = oldZoom
         let screenScale = UIScreen.main.scale
 
         ptr.pointee.translation = [Float(translation.x * screenScale),
                                    Float(translation.y * screenScale)]
-        ptr.pointee.anchor = [Float(anchor.x * screenScale),
-                              Float(anchor.y * screenScale)]
         
         let commandBuffer = commandQueue?.makeCommandBuffer()
         commandBuffer?.label = "My Command"

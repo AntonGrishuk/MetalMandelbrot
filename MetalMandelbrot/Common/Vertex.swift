@@ -9,8 +9,6 @@ import Foundation
 
 struct FragmentUniforms {
     var scale: Float
-    var oldScale: Float
     var viewSize: SIMD2<Float>
     var translation: SIMD2<Float>
-    var anchor: SIMD2<Float>
 }
