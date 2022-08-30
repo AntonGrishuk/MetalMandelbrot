@@ -39,6 +39,7 @@ class FragmentShaderCalculatedViewController: UIViewController {
         view.addGestureRecognizer(pinch)
 
         let pan = UIPanGestureRecognizer(target: self, action: #selector(onPan(_:)))
+        pan.maximumNumberOfTouches = 2
         metalView.addGestureRecognizer(pan)
         view.addSubview(metalView)
         
