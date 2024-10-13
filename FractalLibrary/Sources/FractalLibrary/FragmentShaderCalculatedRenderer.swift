@@ -11,14 +11,14 @@ import Foundation
 import MetalKit
 import simd
 
-class FragmenShaderCalculatedRenderer: NSObject {
+public class FragmenShaderCalculatedRenderer: NSObject {
     
-    var zoom: Float = 1 {
+    public var zoom: Float = 1 {
         didSet {
             oldZoom = oldValue
         }
     }
-    var translation: CGPoint = .zero
+    public var translation: CGPoint = .zero
     
     private var oldZoom: Float = 1
     private let metalView: MTKView
@@ -31,7 +31,7 @@ class FragmenShaderCalculatedRenderer: NSObject {
     private var uniformsBuffer: MTLBuffer
     private var isComplete: Bool = true
     
-    init(view: MTKView) {
+    public init(view: MTKView) {
         self.metalView = view
         let size = view.drawableSize
         let viewSize: SIMD2<Float> = [Float(size.width), Float(size.height)]
@@ -42,11 +42,23 @@ class FragmenShaderCalculatedRenderer: NSObject {
         super.init()
         
         self.metalView.device = self.device
+        let frameworkBundle = Bundle.module
 
-        guard let library = self.device?.makeDefaultLibrary(),
-              let vertexFunction = library.makeFunction(name: "fragCalculatedVertexShader"),
-              let fragmentFunction = library.makeFunction(name: "fragmentCalculatedShader")
-        else { return }
+        guard let library = try? device?.makeDefaultLibrary(bundle: frameworkBundle) else {
+            print("Library is nil")
+            return
+        }
+        
+        guard let vertexFunction = library.makeFunction(name: "fragCalculatedVertexShader") else {
+            print("vertexFunction is nil")
+            return
+        }
+
+        guard let fragmentFunction = library.makeFunction(name: "fragmentCalculatedShader")
+        else {
+            print("fragmentFunction is nil")
+            return
+        }
         
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.label = "Simple Pipeline"
@@ -67,11 +79,15 @@ class FragmenShaderCalculatedRenderer: NSObject {
         
     }
     
-    func update() {
+    public func update() {
+#if os(iOS)
         metalView.setNeedsDisplay()
+#elseif os(macOS)
+        metalView.setNeedsDisplay(self.metalView.bounds)
+#endif
     }
     
-    func pinch(_ point: CGPoint) {
+    public func pinch(_ point: CGPoint) {
         let shift = (point + translation - CGPoint(x: metalView.bounds.width,
                                                    y: metalView.bounds.height) * 0.5) * (1 - zoom / oldZoom)
         translation = translation - shift
@@ -81,17 +97,21 @@ class FragmenShaderCalculatedRenderer: NSObject {
 
 extension FragmenShaderCalculatedRenderer: MTKViewDelegate {
     
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         view.draw()
     }
     
-    func draw(in view: MTKView) {
+    public func draw(in view: MTKView) {
         guard isComplete else { return }
         isComplete = false
         
         let ptr = uniformsBuffer.contents().bindMemory(to: FragmentUniforms.self, capacity: 1)
         ptr.pointee.scale = zoom
+#if os(iOS)
         let screenScale = UIScreen.main.scale
+#elseif os(macOS)
+        let screenScale = NSApp.mainWindow?.backingScaleFactor ?? 1.0
+#endif
 
         ptr.pointee.translation = [Float(translation.x * screenScale),
                                    Float(translation.y * screenScale)]

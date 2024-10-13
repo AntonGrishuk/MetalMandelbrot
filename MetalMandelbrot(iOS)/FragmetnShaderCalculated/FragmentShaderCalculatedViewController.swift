@@ -7,6 +7,7 @@
 
 import UIKit
 import MetalKit
+import FractalLibrary
 
 class FragmentShaderCalculatedViewController: UIViewController {
     
